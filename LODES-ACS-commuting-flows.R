@@ -10,9 +10,7 @@ conflict_prefer("filter", "dplyr")
 conflict_prefer("summarize", "dplyr")
 
 #Set the working directory
-setwd("~/Dropbox/Courses/Transportation Geography 2020/Lab 2/Data")
-
-options(digits=8)
+setwd("~/Documents/GitHub/LODES-ACS-commuting-flows/LODES-ACS-commuting-flows/Data")
 
 ########Create O-D Trips#######################
 
@@ -54,7 +52,7 @@ ODTR <- OD %>%
   summarize(JTOT = sum(JTOT, na.rm = T))
 
 
-###1.3 Find Commuting by Mode and Merge with Origin and Destination Coordinates 
+###Find Commuting by Mode and Merge with Origin and Destination Coordinates 
 
 #Find off-diagonal values (true commuting)
 ODTR_offdiag <- ODTR[ODTR$origTR!=ODTR$destTR, ]
@@ -125,22 +123,9 @@ MergeChi2$DIST[is.na(MergeChi2$DIST)]<-0
 
 MergeChi2$DIST <- MergeChi2$DIST+.05
 
-#Calculate the weighted number of walking trips
-
-#MergeChi2$W_JWALK <- ifelse(MergeChi2$DIST<2,MergeChi2$JTOTWLK,(MergeChi2$JTOTWLK*MergeChi2$DIST^-4))
-#Weights calculated throughout, not only at boundary of min. threshold
-#MergeChi2$W_JWALK <- ifelse(MergeChi2$DIST>5,0,
-#                            ifelse(MergeChi2$DIST<2,MergeChi2$JTOTWLK,(MergeChi2$JTOTWLK*MergeChi2$DIST^-4)))
-
-# MergeChi2$W_JWALK <- ifelse(MergeChi2$DIST>3.5,0,
-#                             ifelse(MergeChi2$DIST<1,MergeChi2$JTOTWLK,(MergeChi2$JTOTWLK*MergeChi2$DIST^-0.714)))
-
+#Calculate the weighted number of walking trips based on 2009 NHTS-derived distance decay factor
 MergeChi2$W_JWALK <- ifelse(MergeChi2$DIST>3.5,0,
                             ifelse(MergeChi2$DIST<1,MergeChi2$JTOTWLK,(MergeChi2$JTOTWLK*MergeChi2$DIST^-0.714)))
-
-
-# MergeChi2$W_JWALK <- ifelse(MergeChi2$DIST>3.5,0,MergeChi2$JTOTWLK)
-
 
 #Find the remainder (excess) walking trips, i.e., the difference between weighted and raw predicted trips
 MergeChi2$W_REM <- MergeChi2$JTOTWLK - MergeChi2$W_JWALK
@@ -148,7 +133,7 @@ MergeChi2$W_REM <- MergeChi2$JTOTWLK - MergeChi2$W_JWALK
 #Adds a unique ID value for each row for joins
 MergeChi2$ID <- seq.int(nrow(MergeChi2))
 
-#Filter the data by links within a given re-absorption threshold (1km); count the number of destination tracts within this distance for each origin
+#Filter the data by links within a given re-absorption threshold (3.5km); count the number of destination tracts within this distance for each origin
 Neighbors <- MergeChi2 %>%
   filter(DIST<=3.5) %>% 
   add_count(origTR, name = "N_CLOSE") %>%
@@ -187,14 +172,8 @@ hist(MergeChi5$N_WALK, breaks =seq(0,2000, by=20), xlab="Mode Share %", main="Es
 hist(MergeChi5$N_WALK2, breaks =seq(0,2000, by=20), xlab="Mode Share %", main="Estimated Walk2 Percent", col="lightgreen", ylim=c(0, 1200))
 
 
-##Bike Re-Apportionment
-#MergeChi5$W_JBIKE <- ifelse(MergeChi5$DIST<3,MergeChi5$JTOTBIK,(MergeChi5$JTOTBIK*MergeChi5$DIST^-3.5))
-# MergeChi5$W_JBIKE <- ifelse(MergeChi5$DIST>6.8,0,
-#                             ifelse(MergeChi5$DIST<2.6,MergeChi5$JTOTBIK,(MergeChi5$JTOTBIK*(MergeChi5$DIST-1.6)^-0.329)))
-
+##Bike Re-Apportionment based on 2009 NHTS-derived distance decay factor
 MergeChi5$W_JBIKE <- ifelse(MergeChi5$DIST>6.8,0,(MergeChi5$JTOTBIK*MergeChi5$DIST^-0.329))
-
-# MergeChi5$W_JBIKE <- ifelse(MergeChi5$DIST>6.8,0,MergeChi5$JTOTBIK)
 
 MergeChi5$B_REM <- MergeChi5$JTOTBIK - MergeChi5$W_JBIKE
 
@@ -228,43 +207,36 @@ MergeChi8$ADD_BIKE <- ifelse(!is.na(MergeChi8$EVENB), MergeChi8$T_BREM*(MergeChi
 
 MergeChi8$N_BIKE2 <- MergeChi8$ADD_BIKE + MergeChi8$W_JBIKE
 
-##Transit Re-Apportionment
-# install.packages('bit64')
+##Transit Re-Apportionment using r5r
 
 #Increase working memory available for Java
 options(java.parameters = "-Xmx10G")
 
-# Load packages necessary for vignette
-
-
-# define file path to data (~Library/Frameworks/R.framework/Versions/4.0/Resources/library/r5r)
-# GTFS data from: http://transitfeeds.com/p/chicago-transit-authority/165 "11 November 2021" MUST USE SAME DATE
-data_path <- "~/Dropbox/Research Projects/LODES modal commuting/chicagopoa"
+# Define a  file path to GTFS data
+# GTFS data downloaded from: http://transitfeeds.com/p/chicago-transit-authority/165
+# Date: 11 November 2021 - you must run the r5r query for the same date
+data_path <- "~/Documents/GitHub/LODES-ACS-commuting-flows/LODES-ACS-commuting-flows/Data/chicagopoa"
 list.files(data_path)
 
-# open and show points of interest from Chicago 
+# Open and show points of interest (i.e., census tract centroids in this case) from Chicago 
 poi <- fread(file.path(data_path, "poa_tracts2.csv"))
 head(poi)
 
 # Build a routable transport network with setup_R5
 
-# Indicate the path where OSM and GTFS data are stored. Note: this step took me upwards of 4 
-# minutes to finish computing  
+# Indicate the path where OSM and GTFS data are stored
 r5r_core <- setup_r5(data_path = data_path, verbose = FALSE)
 
-# Now that we have created the requisite files, we give examples of R5R's core functions: 
-# travel_time_matrix() and detailed_itineraries(). See the vignette for an overview of their
-# necessary arguments. 
+# Now that we have created the requisite files, we can use the travel_time_matrix() function
+# to calculate transit travel times from all origins to destinations based on the supplied parameters.
 
-# Step 7: Calculate an example travel time matrix
-
-# set inputs
 mode <- c("TRANSIT") 
 max_walk_dist <- 15000
-max_trip_duration <- 720 #Think about varying distance based on location (i.e., force trips to Loop)
+max_trip_duration <- 720
 departure_datetime <- as.POSIXct("11-11-2021 15:00:00",
                                  format = "%d-%m-%Y %H:%M:%S")
-# calculate a travel time matrix
+
+# Calculate a travel time matrix
 ttmt <- travel_time_matrix(r5r_core = r5r_core,
                            origins = poi,
                            destinations = poi,
@@ -277,28 +249,9 @@ ttmt <- travel_time_matrix(r5r_core = r5r_core,
                            walk_speed = 5,
                            bike_speed = 18,
                            verbose = FALSE)
-# stop_r5(r5r_core)
-# rJava::.jgc(R.gc = TRUE)
-# r5r_core <- setup_r5(data_path = data_path, verbose = FALSE)
 
-# mode2 <- c("WALK") 
-# ttmw <- travel_time_matrix(r5r_core = r5r_core,
-#                            origins = poi,
-#                            destinations = poi,
-#                            mode = mode2,
-#                            departure_datetime = departure_datetime,
-#                            max_walk_dist = max_walk_dist,
-#                            max_trip_duration = max_trip_duration,
-#                            verbose = FALSE)
 stop_r5(r5r_core)
 rJava::.jgc(R.gc = TRUE)
-
-#################No longer needed with "breakdown" option
-# ttmw <- plyr::rename(ttmw, c("travel_time" = "walk"))
-# ttmw$uniqueID <- paste0(as.character(ttmw$fromId),", ", as.character(ttmw$toId))
-# 
-# ttmw2 <- ttmw %>%
-#   select(uniqueID, walk)
  
 poi$toId <- as.character(poi$id)
 poi$fromId <- as.character(poi$id)
@@ -326,50 +279,16 @@ MergeChi9  <- MergeChi9  %>%
   select(TRIP_ID, ID, origTR.x.x, destTR.x.x, h_lat.x, h_long.x, w_lat.x, w_long.x, DIST, JTOT, JTOTAUT, JTOTTRN, JTOTBIK, JTOTWLK, JTOTOTH, KTOT, WTF, N_BIKE2, N_WALK2,
          n_rides)
 
-#Re-weight transit trips
-#Fill walk NA values (over 1500 meters or 150 minutes) with 150
-# MergeChi9$walk[is.na(MergeChi9$walk)] <- 301
-# MergeChi9$transit[is.na(MergeChi9$transit)] <- 301
 
-#Fix 3 tract-to-tract trips that didn't return a transit or walk time for some reason
-# MergeChi9$walk[MergeChi9$TRIP_ID=="17031804405, 17031804405"] <- 0
-# MergeChi9$transit[MergeChi9$TRIP_ID=="17031804405, 17031804405"] <- 0
-# 
-# MergeChi9$walk[MergeChi9$TRIP_ID=="17031804406, 17031804406"] <- 0
-# MergeChi9$transit[MergeChi9$TRIP_ID=="17031804406, 17031804406"] <- 0
-# 
-# MergeChi9$walk[MergeChi9$TRIP_ID=="17031804404, 17031804404"] <- 0
-# MergeChi9$transit[MergeChi9$TRIP_ID=="17031804404, 17031804404"] <- 0
-
-# MergeChi9$ratio <- MergeChi9$transit/MergeChi9$walk
-
-# MergeChi9$gap <- MergeChi9$walk-MergeChi9$transit
 
 MergeChi9$n_rides[is.na(MergeChi9$n_rides)] <- 0
-
-# MergeChi9$ratio[(MergeChi9$origTR.x.x==MergeChi9$destTR.x.x)] <- .05 
-
-# gap_value <- 0 #set a gap value - big hinge point on gap; at 10 minutes there is a significant proportion of tracts whose 
-# only transit travel is intra-tract (based on the way we defined transit "neighbors"); at 0, no tracts that only intra-tract 
-# transit travel. Changes make almost no differenc eon large-scale patterns. 
-
-# MergeChi9$n_rides[(MergeChi9$origTR.x.x==MergeChi9$destTR.x.x)] <- 1 #this solves the problem of tracts not having neighbors in NeighborsT2 due to using gap or ratio (using a DIST threshold,
-# all tracts have neighbors), except for two tracts: 17031830400 and 17031826902, which have 0 intra-tract flows. This results in a small mismatch between "new" and "old" 
-# transit flows because the raw estimated transit flows out of these tracts are simply lost. This amounts to 186 out of 353,711 total raw transit flows.
-
-# ff_glimpse(MergeChi9) #Also have some issues with negative N_WALK2 (I think the issues are all associated with distance decay calcs)
-
-# MergeChi9$W_JTRAN <- ifelse((MergeChi9$ratio>.75|MergeChi9$transit>150),0,
-#                             ifelse(MergeChi9$transit<85,MergeChi9$JTOTTRN,(MergeChi9$JTOTTRN*(MergeChi9$transit-84)^-0.008)))
-
-# MergeChi9$W_JTRAN <- ifelse(MergeChi9$ratio>.75,0,MergeChi9$JTOTTRN)
 
 MergeChi9$W_JTRAN <- ifelse(MergeChi9$n_rides==0,0,MergeChi9$JTOTTRN)
 
 MergeChi9$T_REM <- MergeChi9$JTOTTRN - MergeChi9$W_JTRAN
 
 NeighborsT <- MergeChi9 %>%
-  filter(n_rides>=1) %>% #DIST=35.5 not a good solution here, but it maintains 100% count. We should be using ratio (or transit at the very least), but we miss some observations when we do that.
+  filter(n_rides>=1) %>% 
   add_count(origTR.x.x, name = "T_CLOSE") %>%
   select(ID, origTR.x.x, destTR.x.x, T_CLOSE)
 
@@ -384,8 +303,6 @@ NeighborsT2$origTR.x.x.x <- NeighborsT2$origTR.x.x
 
 MergeChi11 <- merge(MergeChi10,NeighborsT2,by="origTR.x.x.x",all.x=TRUE)
 
-# MergeChi11$TTOTT[is.na(MergeChi11$TTOTT)] <- 0
-
 ApportionT <- MergeChi11 %>%
   group_by(origTR.x.x.x) %>%
   summarize(T_TREM = sum(T_REM, na.rm = T))
@@ -393,8 +310,6 @@ ApportionT <- MergeChi11 %>%
 MergeChi12 <- merge(MergeChi11,ApportionT,by="origTR.x.x.x",all.x=TRUE)
 
 MergeChi12$EVENT <- MergeChi12$T_TREM/MergeChi12$T_CLOSE
-
-# MergeChi12$EVENT[sapply(MergeChi12$EVENT, is.infinite)] <- 0
 
 MergeChi12$N_TRAN <- ifelse(is.na(MergeChi12$EVENT), MergeChi12$W_JTRAN, (MergeChi12$W_JTRAN + MergeChi12$EVENT))
 
@@ -405,27 +320,14 @@ MergeChi12$N_TRAN2[is.na(MergeChi12$N_TRAN2)] <- 0
 
 # #Calculate "Original" totals by mode
 MergeChi12$O_TOT <- MergeChi12$JTOTWLK + MergeChi12$JTOTAUT + MergeChi12$JTOTTRN + MergeChi12$JTOTBIK + MergeChi12$JTOTOTH
-# 
+
 # #Calculate "New" totals by mode
 MergeChi12$N_TOT <- MergeChi12$N_WALK2 + MergeChi12$JTOTAUT + MergeChi12$N_TRAN2 + MergeChi12$N_BIKE2 +  MergeChi12$JTOTOTH
-# 
-# #Find percentage of newly-adjusted trips by mode
-# MergeChi8$NW2PCT <- MergeChi8$N_WALK2/MergeChi8$N_TOT
-# MergeChi8$NAPCT <- MergeChi8$JTOTAUT/MergeChi8$N_TOT
-# MergeChi8$NTRPCT <- MergeChi8$JTOTTRN/MergeChi8$N_TOT
-# MergeChi8$NB2CT<- MergeChi8$N_BIKE2/MergeChi8$N_TOT
-# 
-# #Remove NA values to solve the 0 numerator/denominator problem by creating a new column and 
-# MergeChi8$NW2PCT2 <- ifelse(is.na(MergeChi8$NW2PCT), 0, MergeChi8$NW2PCT)
-# MergeChi8$NAPCT2 <- ifelse(is.na(MergeChi8$NAPCT), 0, MergeChi8$NAPCT)
-# MergeChi8$NTRPCT2 <- ifelse(is.na(MergeChi8$NTRPCT), 0, MergeChi8$NTRPCT)
-# MergeChi8$NB2CT2 <- ifelse(is.na(MergeChi8$NB2CT), 0, MergeChi8$NB2CT)
-# 
-# #Multiply percentage of newly-adjusted trips by mode with original total number of trips to preserve totals
-# MergeChi8$NNWALK <- MergeChi8$NW2PCT2 * MergeChi8$O_TOT
-# MergeChi8$NNAUTO <- MergeChi8$NAPCT2 * MergeChi8$O_TOT
-# MergeChi8$NNTRAN <- MergeChi8$NTRPCT2 * MergeChi8$O_TOT
-# MergeChi8$NNBIKE<- MergeChi8$NB2CT2 * MergeChi8$O_TOT
+
+
+
+
+####VALIDATION
 
 #Check the aggregate values for N_WALK2, NNWALK2, N_TOT, O_TOT, etc.
 Test <- MergeChi12 %>%
@@ -491,70 +393,9 @@ write.csv(Mode_Flows, file = "Mode_Flows.csv")
 
 
 
+####TRACT CHARACTERISTICS
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Create distance bins to quantify over-estimation of local flows
-Mode_Flows$Bin <- ifelse(Mode_Flows$DIST<1,1,ifelse(Mode_Flows$DIST<2,2,ifelse(Mode_Flows$DIST<5,3,ifelse(Mode_Flows$DIST<10,4,
-                                                                                                          ifelse(Mode_Flows$DIST<20,5,ifelse(Mode_Flows$DIST<30,6,7))))))
-Bins <- Mode_Flows %>%
-  group_by(Bin) %>%
-  summarize(JTOT = sum(JTOT, na.rm = T), AUT = sum(JTOTAUT, na.rm = T), TRN = sum(N_TRAN2, na.rm = T), BIKE = sum(N_BIKE2, na.rm = T), WALK = sum(N_WALK2, na.rm = T), OTH = sum(JTOTOTH, na.rm = T))
-
-Bins$SUM_NEW <- Bins$AUT + Bins$TRN + Bins$BIKE + Bins$WALK + Bins$OTH
-Bins$DIF <- Bins$SUM_NEW - Bins$JTOT
-Bins$PerDIF <- Bins$DIF/(sum(Bins$JTOT, na.rm=TRUE))
-
-# #Under-estimated remainder equals  the % remainder between O_TOT and JTOT and % workers not commuting by these 4 modes in ACS
-# Est <- sum(Bins$PerDIF, na.rm=TRUE)
-# 
-# NONMode <- (sum(ACS$WORK16) - (sum(ACS$AUTO) + sum(ACS$TRANSIT) + sum(ACS$BIKE) + sum(ACS$WALK))) / (sum(ACS$WORK16))
-# 
-# Mode <- (sum(ACS$AUTO) + sum(ACS$TRANSIT) + sum(ACS$BIKE) + sum(ACS$WALK)) / sum(ACS$WORK16)
-# Mode
-# 
-# Est+NONMode
-
-#Export bins to a CSV
-write.csv(Bins, file = "Bins.csv")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###Characterizing neighborhood areas
 #Aggregate all by origin
 ODTR_orig <- Mode_Flows %>%
   group_by(origTR) %>%
@@ -600,11 +441,6 @@ Merge2$NTRANDFD <- Merge2$NTRAND - Merge2$JTOTTND
 Merge2$NBIKEDIF <- Merge2$NBIKEDFD / Merge2$JTOTD
 Merge2$NWALKDIF <- Merge2$NWALKDFD / Merge2$JTOTD
 Merge2$NTRANDIF <- Merge2$NTRANDFD / Merge2$JTOTD
-
-#Combined percent difference (O/D) - positive values = more representation in weighted estimates; negative values = more representation in naive estimates
-# Merge2$NBIKEDIF <- Merge2$NBIKEPDO + Merge2$NBIKEPDD
-# Merge2$NWALKDIF <- Merge2$NWALKPDO + Merge2$NWALKPDD #Destination-oriented only??
-# Merge2$NTRANDIF <- Merge2$NTRANPDO + Merge2$NTRANPDD
 
 #Calculate percentages of Self-Containment for weighted estimates by mode
 Merge2$JTOTS <- Merge2$JTOT / Merge2$JTOTO
