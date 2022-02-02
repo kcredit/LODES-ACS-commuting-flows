@@ -1,11 +1,9 @@
-###Loading Libraries and Opening LODES Data
+###Loading Libraries and Opening Data
 
 #Load libraries and install packages
 packages.wanted <- c("conflicted", "finalfit", "leafgl","mapview","data.table","s2","sf","r5r","GGally","MASS", "robustbase","mvoutlier","RColorBrewer","rgdal","ggplot2","Hmisc", "dplyr","purrr","foreign","stargazer","tidyr")
 #for (package in packages.wanted) install.packages(package,character.only=TRUE)
 for (package in packages.wanted) require(package,character.only=TRUE)
-
-# install.packages("r5r")
 
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
@@ -15,25 +13,6 @@ conflict_prefer("summarize", "dplyr")
 setwd("~/Dropbox/Courses/Transportation Geography 2020/Lab 2/Data")
 
 options(digits=8)
-
-########Derive Beta, Mu, and Alpha coefficients#######################
-
-# trip <- read.csv("trippub.csv")
-# 
-# tripchi <- subset(trip, (trip$CDIVMSAR==31 & trip$TRIPPURP=="HBW"))
-# 
-# tripchi2 <- tripchi %>%
-#   select(TDCASEID, TRPMILES, TRVLCMIN, TRPTRANS)
-# 
-# tripchi2$DIST <- tripchi2$TRPMILES*1.60934
-# 
-# tripchiwalk <- subset(tripchi2, tripchi2$TRPTRANS==01)
-# tripchibike <- subset(tripchi2, tripchi2$TRPTRANS==02)
-# tripchitran <- subset(tripchi2, ((tripchi2$TRPTRANS==11)|(tripchi2$TRPTRANS==15)|(tripchi2$TRPTRANS==16)))
-# 
-# write.csv(tripchiwalk, file = "tripchiwalk.csv")
-# write.csv(tripchibike, file = "tripchibike.csv")
-# write.csv(tripchitran, file = "tripchitran.csv")
 
 ########Create O-D Trips#######################
 
