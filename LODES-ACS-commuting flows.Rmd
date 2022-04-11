@@ -1,0 +1,26 @@
+---
+title: "LODES-ACS-commuting flows"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1) Introduction: which we can populate partially from the paper’s 
+introduction or abstract
+
+2) Data preparation: loading packages, etc.
+
+3) Naive method - equal distribution: this is where we run the first part of
+the code, merging the ACS mode share and calculating distances, etc.
+
+4)Weighted method - distance and travel time redistribution: this is where we get
+into calculating the weighted distribution by each mode; each mode should probably
+have its own sub-section
+
+5) Validation: check aggregate values and create maps (e.g., Figure 2 in the
+paper)
+
+6) Basic characteristics of estimated flows by mode: create histograms and Kepler
+maps
