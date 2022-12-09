@@ -499,15 +499,16 @@ MergeChi9$T_REM <- MergeChi9$JTOTTRN - MergeChi9$W_JTRAN
 MergeChi9$T_REM_L <- MergeChi9$JTOTTRN_L - MergeChi9$W_JTRAN_L
 MergeChi9$T_REM_H <- MergeChi9$JTOTTRN_H - MergeChi9$W_JTRAN_H
 
+#Allow tracts to be neighbors of themselves (as is the case throughout)
 NeighborsT <- MergeChi9 %>%
-  filter(n_rides<=3 | n_rides>=1) %>% 
+  filter(n_rides<=3) %>% 
   add_count(origTR, name = "T_CLOSE") %>%
   select(TRIP_ID, T_CLOSE)
 
 MergeChi10 <- merge(MergeChi9,NeighborsT,by="TRIP_ID",all.x=TRUE)
 
 NeighborsT2 <- MergeChi9 %>%
-  filter(n_rides<=3 | n_rides>=1) %>% 
+  filter(n_rides<=3) %>% 
   group_by(origTR) %>%
   summarize(TTOTT = sum(JTOT, na.rm=F))
 
@@ -535,6 +536,10 @@ MergeChi12$N_TRAN2_H <- MergeChi12$ADD_TRAN_H + MergeChi12$W_JTRAN_H
 MergeChi12$N_TRAN2[is.na(MergeChi12$N_TRAN2)] <- 0
 MergeChi12$N_TRAN2_L[is.na(MergeChi12$N_TRAN2_L)] <- 0
 MergeChi12$N_TRAN2_H[is.na(MergeChi12$N_TRAN2_H)] <- 0
+
+# Check!
+sum(MergeChi12$JTOTTRN) - sum(MergeChi12$N_TRAN2) 
+
 
 MergeChi12 <- MergeChi12[MergeChi12$JTOT>0]
 
