@@ -1089,7 +1089,7 @@ Merge2$NTRANDIF <- Merge2$NTRANDFD / Merge2$JTOTD
 #Calculate percentages of Self-Containment for weighted estimates by mode
 Merge2$JTOTS <- Merge2$JTOT / Merge2$JTOTO
 Merge2$JTOTATS <- Merge2$JTOTAUT / Merge2$JTOTATO
-Merge2$NTRANS <- Merge2$N_TRAN2 / Merge2$NTRANO ####### THIS IS A PROBLEM in the re-circulation of transit flows
+Merge2$NTRANS <- Merge2$N_TRAN2 / Merge2$NTRANO 
 Merge2$NBIKES <- Merge2$N_BIKE2 / Merge2$NBIKEO
 Merge2$NWALKS <- Merge2$N_WALK2 / Merge2$NWALKO
 Merge2$JTOTWFHS <- Merge2$JTOTWFH / Merge2$JTOTWFHO
